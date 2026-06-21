@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src.api.models import AlertMessage, CameraConfig, DetectionEvent, ReportRequest
 from src.detector.stranger_detector import StrangerDetector
+from src.notify.telegram_notifier import TelegramNotifier
 from src.api.event_logger import EventLogger
 from src.config.settings import SNAPSHOTS_DIR, BASE_DIR
 
@@ -25,6 +26,7 @@ event_logger = EventLogger()
 active_connections: list[WebSocket] = []
 pipeline_state = {"running": False, "cameras": {}}
 stranger_detector = StrangerDetector()
+telegram_notifier = TelegramNotifier()
 pipeline_thread: threading.Thread | None = None
 
 
@@ -57,6 +59,13 @@ async def broadcast_alert(alert: AlertMessage):
             dead.append(ws)
     for ws in dead:
         active_connections.remove(ws)
+
+    telegram_notifier.send_alert(
+        event_type=alert.event_type,
+        camera_id=alert.camera_id,
+        confidence=alert.confidence,
+        timestamp=alert.timestamp,
+    )
 
 
 @app.get("/health")
@@ -203,6 +212,32 @@ async def get_stranger_events(limit: int = 100):
 async def train_recognizer():
     success = stranger_detector.train_recognizer()
     return {"success": success, "message": "Recognizer trained" if success else "No faces to train on"}
+
+
+@app.get("/notify/telegram/status")
+async def telegram_status():
+    return telegram_notifier.status
+
+
+@app.post("/notify/telegram/configure")
+async def telegram_configure(token: str = Query(...), chat_id: str = Query(...),
+                              alert_types: str = Query("fall,elopement,loitering,stranger"),
+                              min_confidence: float = Query(0.5)):
+    types_list = [t.strip() for t in alert_types.split(",") if t.strip()]
+    telegram_notifier.configure(token, chat_id, alert_types=types_list, min_confidence=min_confidence)
+    return {"status": "configured", "enabled": telegram_notifier.enabled}
+
+
+@app.post("/notify/telegram/disable")
+async def telegram_disable():
+    telegram_notifier.disable()
+    return {"status": "disabled"}
+
+
+@app.post("/notify/telegram/test")
+async def telegram_test():
+    ok = telegram_notifier.send_message("🔔 medicerti-vision 알림 테스트 메시지입니다.")
+    return {"sent": ok}
 
 
 @app.get("/update/check")

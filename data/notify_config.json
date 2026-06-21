@@ -1,0 +1,12 @@
+{
+  "token": "test:token",
+  "chat_id": "12345",
+  "enabled": false,
+  "alert_types": [
+    "fall",
+    "elopement",
+    "loitering",
+    "stranger"
+  ],
+  "min_confidence": 0.5
+}

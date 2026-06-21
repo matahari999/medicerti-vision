@@ -17,3 +17,5 @@ REPORT_OUTPUT_DIR = DATA_DIR / "reports"
 
 FACE_ENCRYPTION_KEY_PATH = BASE_DIR / ".face_key"
 WHITELIST_DB_PATH = str(DATA_DIR / "whitelist.db")
+
+NOTIFY_CONFIG_PATH = DATA_DIR / "notify_config.json"
