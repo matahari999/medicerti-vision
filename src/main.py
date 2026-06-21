@@ -14,7 +14,7 @@ from pathlib import Path
 import cv2
 
 from src.api.event_logger import EventLogger
-from src.api.main import active_connections, broadcast_alert, event_logger, pipeline_state
+from src.api.main import active_connections, broadcast_alert, event_logger, pipeline_state, update_camera_frame
 from src.api.models import AlertMessage, CameraConfig
 from src.config.settings import SNAPSHOTS_DIR
 from src.detector.fall_detector import FallDetector
@@ -199,6 +199,9 @@ async def run_pipeline_async(pipeline: Pipeline):
 
             if masked is not None:
                 display = zoomed if zoomed is not None else masked
+                # 대시보드 스트리밍용 JPEG 인코딩
+                _, enc = cv2.imencode('.jpg', display, [cv2.IMWRITE_JPEG_QUALITY, 70])
+                update_camera_frame(cam_id, enc.tobytes())
                 cv2.imshow(f"medicerti-vision: {cam_id}", display)
 
         key = cv2.waitKey(1) & 0xFF

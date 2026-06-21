@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Medicerti Vision — 병원 안전 AI 모니터링</title>
+  <meta name="description" content="낙상·이탈·배회·외부인을 실시간으로 감지하는 의료기관 전용 Edge AI 비전 시스템" />
+  <meta property="og:title" content="Medicerti Vision" />
+  <meta property="og:description" content="병원 안전을 위한 Edge AI 실시간 영상 분석 솔루션" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #020817;
+      --bg2: #060f22;
+      --card: rgba(10, 22, 50, 0.7);
+      --primary: #22d3ee;
+      --primary2: #818cf8;
+      --text: #e2eeff;
+      --text2: #8baac9;
+      --text3: #445568;
+      --border: rgba(255,255,255,0.06);
+      --radius: 16px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── 배경 효과 ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 70% 40% at 50% -5%, rgba(34,211,238,0.07), transparent),
+        radial-gradient(ellipse 50% 30% at 80% 70%, rgba(129,140,248,0.05), transparent);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* 그리드 패턴 */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(34,211,238,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(34,211,238,0.015) 1px, transparent 1px);
+      background-size: 50px 50px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    section, nav, footer { position: relative; z-index: 1; }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 48px;
+      height: 64px;
+      background: rgba(2,8,23,0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .nav-logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #0ea5e9, #22d3ee);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 16px rgba(34,211,238,0.35);
+      flex-shrink: 0;
+    }
+    .cross {
+      position: relative;
+      width: 16px; height: 16px;
+    }
+    .cross::before {
+      content: '';
+      position: absolute;
+      left: 50%; top: 0;
+      transform: translateX(-50%);
+      width: 4px; height: 16px;
+      background: #fff;
+      border-radius: 2px;
+    }
+    .cross::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 0;
+      transform: translateY(-50%);
+      width: 16px; height: 4px;
+      background: #fff;
+      border-radius: 2px;
+    }
+    .nav-logo-text { font-size: 15px; font-weight: 800; color: var(--text); }
+    .nav-logo-text span { color: var(--primary); }
+
+    .nav-links { display: flex; gap: 32px; }
+    .nav-links a {
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text2);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-cta {
+      padding: 8px 20px;
+      border-radius: 9px;
+      background: var(--primary);
+      color: #020817;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.15s;
+      box-shadow: 0 0 20px rgba(34,211,238,0.2);
+    }
+    .nav-cta:hover {
+      background: #67e8f9;
+      box-shadow: 0 0 28px rgba(34,211,238,0.35);
+    }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 16px;
+      border-radius: 100px;
+      background: rgba(34,211,238,0.08);
+      border: 1px solid rgba(34,211,238,0.2);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: 0.04em;
+      margin-bottom: 28px;
+      animation: fadeInDown 0.6s ease both;
+    }
+    .hero-badge::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: pulse-dot 1.8s infinite;
+    }
+    .hero h1 {
+      font-size: clamp(2.2rem, 5vw, 4rem);
+      font-weight: 900;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+      animation: fadeInUp 0.6s 0.1s ease both;
+    }
+    .text-gradient {
+      background: linear-gradient(135deg, #22d3ee 0%, #818cf8 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero p {
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      color: var(--text2);
+      max-width: 600px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+      animation: fadeInUp 0.6s 0.2s ease both;
+    }
+    .hero-buttons {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 70px;
+      animation: fadeInUp 0.6s 0.3s ease both;
+    }
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      border-radius: 12px;
+      background: var(--primary);
+      color: #020817;
+      font-size: 15px;
+      font-weight: 700;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+      box-shadow: 0 0 24px rgba(34,211,238,0.25);
+    }
+    .btn-primary:hover {
+      background: #67e8f9;
+      transform: translateY(-1px);
+      box-shadow: 0 0 36px rgba(34,211,238,0.4);
+    }
+    .btn-outline {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      border-radius: 12px;
+      background: transparent;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.12);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-outline:hover {
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(255,255,255,0.2);
+    }
+
+    /* 대시보드 목업 */
+    .hero-mockup {
+      width: 100%;
+      max-width: 900px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(8,16,36,0.9);
+      overflow: hidden;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(34,211,238,0.06);
+      animation: fadeInUp 0.7s 0.4s ease both;
+    }
+    .mockup-bar {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 14px 18px;
+      background: rgba(2,8,23,0.8);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .mockup-dot {
+      width: 11px; height: 11px;
+      border-radius: 50%;
+    }
+    .mockup-url {
+      flex: 1;
+      height: 22px;
+      border-radius: 5px;
+      background: rgba(255,255,255,0.04);
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      font-size: 11px;
+      color: var(--text3);
+      margin: 0 14px;
+    }
+    .mockup-body {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      height: 320px;
+    }
+    .mockup-sidebar {
+      background: rgba(3,8,22,0.8);
+      border-right: 1px solid rgba(255,255,255,0.04);
+      padding: 16px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .mockup-nav-item {
+      height: 32px;
+      border-radius: 7px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+    }
+    .mockup-nav-item.active {
+      background: rgba(34,211,238,0.08);
+      color: var(--primary);
+      border: 1px solid rgba(34,211,238,0.14);
+    }
+    .mockup-nav-item:not(.active) { color: var(--text3); }
+    .mockup-dot-sm {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--primary);
+    }
+    .mockup-main { padding: 14px; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+    .mockup-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+    .mockup-stat {
+      border-radius: 9px;
+      padding: 10px 12px;
+      border: 1px solid;
+    }
+    .mockup-stat-num { font-size: 20px; font-weight: 800; }
+    .mockup-stat-label { font-size: 9px; margin-top: 2px; opacity: 0.7; }
+    .mockup-grid { display: grid; grid-template-columns: 1fr 200px; gap: 10px; flex: 1; overflow: hidden; }
+    .mockup-chart {
+      border-radius: 9px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.04);
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      padding: 10px 12px;
+      overflow: hidden;
+    }
+    .mockup-bar-item {
+      flex: 1;
+      border-radius: 2px;
+      opacity: 0.7;
+      min-height: 4px;
+    }
+    .mockup-events {
+      border-radius: 9px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.04);
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .mockup-event {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 7px;
+      border-radius: 5px;
+      background: rgba(255,255,255,0.02);
+      border-left: 2px solid;
+    }
+    .mockup-event-dot { width: 5px; height: 5px; border-radius: 50%; }
+    .mockup-event-text { font-size: 9px; color: var(--text2); }
+
+    /* ── STATS BAR ── */
+    .stats-bar {
+      padding: 50px 48px;
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .stat-item {
+      text-align: center;
+      padding: 0 60px;
+      border-right: 1px solid var(--border);
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-num {
+      font-size: 2.5rem;
+      font-weight: 900;
+      line-height: 1;
+      background: linear-gradient(135deg, #22d3ee, #818cf8);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .stat-label { font-size: 13px; color: var(--text2); margin-top: 6px; }
+
+    /* ── SECTIONS ── */
+    .section { padding: 100px 48px; max-width: 1200px; margin: 0 auto; }
+    .section-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 14px;
+      border-radius: 100px;
+      background: rgba(34,211,238,0.06);
+      border: 1px solid rgba(34,211,238,0.15);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .section h2 {
+      font-size: clamp(1.8rem, 3vw, 2.8rem);
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 14px;
+      letter-spacing: -0.02em;
+    }
+    .section-desc {
+      font-size: 1.05rem;
+      color: var(--text2);
+      max-width: 560px;
+      line-height: 1.7;
+      margin-bottom: 56px;
+    }
+
+    /* ── FEATURES ── */
+    .features-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .feature-card {
+      padding: 28px;
+      border-radius: var(--radius);
+      background: var(--card);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(16px);
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+    .feature-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.4), 0 0 0 1px var(--accent);
+    }
+    .feature-card:hover::before { opacity: 0.6; }
+    .feature-icon {
+      width: 50px; height: 50px;
+      border-radius: 13px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      margin-bottom: 18px;
+      border: 1px solid;
+    }
+    .feature-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .feature-card p { font-size: 14px; color: var(--text2); line-height: 1.65; }
+    .feature-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 16px; }
+    .feature-tag {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 100px;
+      border: 1px solid;
+    }
+
+    /* ── HOW IT WORKS ── */
+    .how-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 28px; }
+    .how-card {
+      padding: 32px 28px;
+      border-radius: var(--radius);
+      background: var(--card);
+      border: 1px solid var(--border);
+      text-align: center;
+      position: relative;
+    }
+    .how-step {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: rgba(34,211,238,0.1);
+      border: 1px solid rgba(34,211,238,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--primary);
+      margin: 0 auto 18px;
+    }
+    .how-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+    .how-card p { font-size: 13px; color: var(--text2); line-height: 1.65; }
+    .how-arrow {
+      position: absolute;
+      right: -20px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text3);
+      font-size: 20px;
+      z-index: 2;
+    }
+
+    /* ── TECH STACK ── */
+    .tech-grid { display: flex; gap: 16px; flex-wrap: wrap; }
+    .tech-chip {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 10px 18px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text2);
+      transition: all 0.15s;
+    }
+    .tech-chip:hover {
+      background: rgba(34,211,238,0.06);
+      border-color: rgba(34,211,238,0.15);
+      color: var(--text);
+    }
+    .tech-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    /* ── DASHBOARD ACCESS ── */
+    .access-section {
+      padding: 80px 48px;
+      background: rgba(6,14,35,0.6);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .access-inner {
+      max-width: 700px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .access-inner h2 { font-size: 2rem; font-weight: 800; margin-bottom: 12px; }
+    .access-inner p { font-size: 14px; color: var(--text2); margin-bottom: 32px; line-height: 1.7; }
+    .access-form {
+      display: flex;
+      gap: 10px;
+      max-width: 480px;
+      margin: 0 auto 16px;
+    }
+    .access-input {
+      flex: 1;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      font-family: monospace;
+      transition: border-color 0.15s;
+    }
+    .access-input:focus { border-color: rgba(34,211,238,0.4); }
+    .access-input::placeholder { color: var(--text3); }
+    .access-btn {
+      padding: 12px 22px;
+      border-radius: 10px;
+      background: var(--primary);
+      color: #020817;
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .access-btn:hover { background: #67e8f9; }
+    .access-hint { font-size: 12px; color: var(--text3); }
+    .access-hint code {
+      color: var(--primary);
+      background: rgba(34,211,238,0.08);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    /* ── CTA ── */
+    .cta {
+      padding: 120px 48px;
+      text-align: center;
+    }
+    .cta h2 { font-size: clamp(1.8rem, 3vw, 2.8rem); font-weight: 800; margin-bottom: 14px; }
+    .cta p { font-size: 1rem; color: var(--text2); margin-bottom: 36px; }
+    .cta-buttons { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .download-badge {
+      display: inline-block;
+      margin-top: 24px;
+      padding: 8px 18px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      font-size: 12px;
+      color: var(--text3);
+    }
+    .download-badge strong { color: var(--text2); }
+
+    /* ── FOOTER ── */
+    footer {
+      padding: 40px 48px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .footer-logo { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; }
+    .footer-logo span { color: var(--primary); }
+    .footer-links { display: flex; gap: 24px; }
+    .footer-links a { font-size: 13px; color: var(--text3); text-decoration: none; transition: color 0.15s; }
+    .footer-links a:hover { color: var(--text2); }
+    .footer-copy { font-size: 12px; color: var(--text3); }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+    .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.55s ease, transform 0.55s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+    .reveal-delay-4 { transition-delay: 0.4s; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      nav { padding: 0 20px; }
+      .nav-links { display: none; }
+      .section { padding: 64px 20px; }
+      .features-grid, .how-grid { grid-template-columns: 1fr; }
+      .stats-bar { flex-wrap: wrap; padding: 40px 20px; gap: 32px; }
+      .stat-item { border-right: none; padding: 0; }
+      .access-form { flex-direction: column; }
+      .mockup-body { grid-template-columns: 1fr; }
+      .mockup-sidebar { display: none; }
+      footer { flex-direction: column; text-align: center; padding: 30px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <a href="/" class="nav-logo">
+    <div class="nav-logo-icon"><div class="cross"></div></div>
+    <span class="nav-logo-text">Medicerti <span>Vision</span></span>
+  </a>
+  <div class="nav-links">
+    <a href="#features">기능</a>
+    <a href="#how">작동 방식</a>
+    <a href="#tech">기술 스택</a>
+    <a href="#access">대시보드 접속</a>
+  </div>
+  <a href="#access" class="nav-cta">대시보드 접속 →</a>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-badge">Edge AI · On-Premise · 실시간</div>
+  <h1>
+    병원 안전을 지키는<br>
+    <span class="text-gradient">AI 비전 시스템</span>
+  </h1>
+  <p>
+    낙상·이탈·배회·미등록 외부인을 CCTV 영상에서 실시간 감지합니다.<br>
+    클라우드 없이 병원 내부에서 완전히 동작하는 Edge AI 솔루션입니다.
+  </p>
+  <div class="hero-buttons">
+    <a href="#access" class="btn-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+      대시보드 접속하기
+    </a>
+    <a href="#features" class="btn-outline">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      주요 기능 보기
+    </a>
+  </div>
+
+  <!-- 대시보드 목업 -->
+  <div class="hero-mockup">
+    <div class="mockup-bar">
+      <div class="mockup-dot" style="background:#ef4444"></div>
+      <div class="mockup-dot" style="background:#fbbf24"></div>
+      <div class="mockup-dot" style="background:#4ade80"></div>
+      <div class="mockup-url">🔒 localhost:8111/dashboard</div>
+      <div style="font-size:11px; color:#22d3ee; font-weight:700;">● LIVE</div>
+    </div>
+    <div class="mockup-body">
+      <div class="mockup-sidebar">
+        <div style="display:flex;align-items:center;gap:7px;padding:8px;margin-bottom:10px;">
+          <div style="width:22px;height:22px;background:linear-gradient(135deg,#0ea5e9,#22d3ee);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;">✚</div>
+          <span style="font-size:12px;font-weight:700;color:#e2eeff;">Medicerti</span>
+        </div>
+        <div class="mockup-nav-item active"><div class="mockup-dot-sm"></div>대시보드</div>
+        <div class="mockup-nav-item">📋 이벤트</div>
+        <div class="mockup-nav-item">📄 보고서</div>
+        <div class="mockup-nav-item">⚙️ 설정</div>
+      </div>
+      <div class="mockup-main">
+        <div class="mockup-stats">
+          <div class="mockup-stat" style="--accent:#f87171;border-color:rgba(248,113,113,0.2);background:rgba(248,113,113,0.06);">
+            <div class="mockup-stat-num" style="color:#f87171;">3</div>
+            <div class="mockup-stat-label" style="color:#f87171;">낙상</div>
+          </div>
+          <div class="mockup-stat" style="border-color:rgba(251,146,60,0.2);background:rgba(251,146,60,0.06);">
+            <div class="mockup-stat-num" style="color:#fb923c;">1</div>
+            <div class="mockup-stat-label" style="color:#fb923c;">이탈</div>
+          </div>
+          <div class="mockup-stat" style="border-color:rgba(251,191,36,0.2);background:rgba(251,191,36,0.06);">
+            <div class="mockup-stat-num" style="color:#fbbf24;">5</div>
+            <div class="mockup-stat-label" style="color:#fbbf24;">배회</div>
+          </div>
+          <div class="mockup-stat" style="border-color:rgba(192,132,252,0.2);background:rgba(192,132,252,0.06);">
+            <div class="mockup-stat-num" style="color:#c084fc;">0</div>
+            <div class="mockup-stat-label" style="color:#c084fc;">미등록</div>
+          </div>
+        </div>
+        <div class="mockup-grid">
+          <div class="mockup-chart" id="mockChart"></div>
+          <div class="mockup-events">
+            <div class="mockup-event" style="border-color:#f87171;">
+              <div class="mockup-event-dot" style="background:#f87171;"></div>
+              <div class="mockup-event-text">낙상 감지 · CAM-01</div>
+            </div>
+            <div class="mockup-event" style="border-color:#fbbf24;">
+              <div class="mockup-event-dot" style="background:#fbbf24;"></div>
+              <div class="mockup-event-text">배회 감지 · CAM-03</div>
+            </div>
+            <div class="mockup-event" style="border-color:#fb923c;">
+              <div class="mockup-event-dot" style="background:#fb923c;"></div>
+              <div class="mockup-event-text">이탈 시도 · CAM-02</div>
+            </div>
+            <div class="mockup-event" style="border-color:#f87171;">
+              <div class="mockup-event-dot" style="background:#f87171;"></div>
+              <div class="mockup-event-text">낙상 감지 · CAM-01</div>
+            </div>
+            <div class="mockup-event" style="border-color:#c084fc;">
+              <div class="mockup-event-dot" style="background:#c084fc;"></div>
+              <div class="mockup-event-text">미등록 감지 · CAM-04</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STATS ── -->
+<div class="stats-bar">
+  <div class="stat-item reveal">
+    <div class="stat-num">99.2%</div>
+    <div class="stat-label">낙상 감지 정확도</div>
+  </div>
+  <div class="stat-item reveal reveal-delay-1">
+    <div class="stat-num">&lt;200ms</div>
+    <div class="stat-label">실시간 감지 지연시간</div>
+  </div>
+  <div class="stat-item reveal reveal-delay-2">
+    <div class="stat-num">24/7</div>
+    <div class="stat-label">무중단 모니터링</div>
+  </div>
+  <div class="stat-item reveal reveal-delay-3">
+    <div class="stat-num">0</div>
+    <div class="stat-label">클라우드 의존성</div>
+  </div>
+</div>
+
+<!-- ── FEATURES ── -->
+<div id="features">
+  <div class="section">
+    <div class="section-tag">주요 기능</div>
+    <h2>4가지 핵심 안전 감지</h2>
+    <p class="section-desc">CCTV 영상 하나로 병원 내 모든 위험 상황을 자동으로 감지하고 즉시 알림을 전송합니다.</p>
+
+    <div class="features-grid">
+      <!-- 낙상 -->
+      <div class="feature-card reveal" style="--accent:rgba(248,113,113,0.3);">
+        <div class="feature-icon" style="background:rgba(248,113,113,0.1);border-color:rgba(248,113,113,0.25);color:#f87171;">🫀</div>
+        <h3 style="color:#f87171;">낙상 감지</h3>
+        <p>YOLOv8-Pose ONNX 모델이 환자의 자세 변화를 실시간으로 분석하여 낙상을 0.2초 이내에 감지합니다. 오탐률을 최소화하는 다단계 검증 알고리즘 적용.</p>
+        <div class="feature-tags">
+          <span class="feature-tag" style="color:#f87171;border-color:rgba(248,113,113,0.3);background:rgba(248,113,113,0.07);">Pose Estimation</span>
+          <span class="feature-tag" style="color:#f87171;border-color:rgba(248,113,113,0.3);background:rgba(248,113,113,0.07);">YOLOv8</span>
+          <span class="feature-tag" style="color:#f87171;border-color:rgba(248,113,113,0.3);background:rgba(248,113,113,0.07);">실시간</span>
+        </div>
+      </div>
+
+      <!-- 이탈 -->
+      <div class="feature-card reveal reveal-delay-1" style="--accent:rgba(251,146,60,0.3);">
+        <div class="feature-icon" style="background:rgba(251,146,60,0.1);border-color:rgba(251,146,60,0.25);color:#fb923c;">🚪</div>
+        <h3 style="color:#fb923c;">구역 이탈 감지</h3>
+        <p>GeoFence 기술로 병동·ICU·수술실 등 제한 구역을 설정하고, 환자가 구역을 벗어날 경우 즉시 알림을 발송합니다. 다중 구역 동시 모니터링 지원.</p>
+        <div class="feature-tags">
+          <span class="feature-tag" style="color:#fb923c;border-color:rgba(251,146,60,0.3);background:rgba(251,146,60,0.07);">GeoFence</span>
+          <span class="feature-tag" style="color:#fb923c;border-color:rgba(251,146,60,0.3);background:rgba(251,146,60,0.07);">다중 구역</span>
+          <span class="feature-tag" style="color:#fb923c;border-color:rgba(251,146,60,0.3);background:rgba(251,146,60,0.07);">즉시 알림</span>
+        </div>
+      </div>
+
+      <!-- 배회 -->
+      <div class="feature-card reveal reveal-delay-2" style="--accent:rgba(251,191,36,0.3);">
+        <div class="feature-icon" style="background:rgba(251,191,36,0.1);border-color:rgba(251,191,36,0.25);color:#fbbf24;">👁</div>
+        <h3 style="color:#fbbf24;">장시간 배회 감지</h3>
+        <p>ROI 트래커가 특정 구역에서 일정 시간 이상 머무는 인원을 감지합니다. 야간 병동 혼자 배회하는 환자를 자동으로 탐지하여 간호사에게 알립니다.</p>
+        <div class="feature-tags">
+          <span class="feature-tag" style="color:#fbbf24;border-color:rgba(251,191,36,0.3);background:rgba(251,191,36,0.07);">ROI Tracker</span>
+          <span class="feature-tag" style="color:#fbbf24;border-color:rgba(251,191,36,0.3);background:rgba(251,191,36,0.07);">시간 임계값</span>
+          <span class="feature-tag" style="color:#fbbf24;border-color:rgba(251,191,36,0.3);background:rgba(251,191,36,0.07);">야간 특화</span>
+        </div>
+      </div>
+
+      <!-- 미등록 -->
+      <div class="feature-card reveal reveal-delay-3" style="--accent:rgba(192,132,252,0.3);">
+        <div class="feature-icon" style="background:rgba(192,132,252,0.1);border-color:rgba(192,132,252,0.25);color:#c084fc;">🛡</div>
+        <h3 style="color:#c084fc;">미등록 외부인 감지</h3>
+        <p>얼굴 인식 화이트리스트로 등록된 직원·보호자를 제외한 미등록 인원을 자동 감지합니다. 출입 통제 로그를 자동으로 기록하여 인증평가 서식으로 출력합니다.</p>
+        <div class="feature-tags">
+          <span class="feature-tag" style="color:#c084fc;border-color:rgba(192,132,252,0.3);background:rgba(192,132,252,0.07);">얼굴 인식</span>
+          <span class="feature-tag" style="color:#c084fc;border-color:rgba(192,132,252,0.3);background:rgba(192,132,252,0.07);">화이트리스트</span>
+          <span class="feature-tag" style="color:#c084fc;border-color:rgba(192,132,252,0.3);background:rgba(192,132,252,0.07);">출입 통제</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── HOW IT WORKS ── -->
+<div id="how" style="background:rgba(6,14,35,0.4);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+  <div class="section">
+    <div class="section-tag">작동 방식</div>
+    <h2>설치 3단계로 바로 시작</h2>
+    <p class="section-desc">복잡한 클라우드 설정 없이 병원 PC에 설치하면 즉시 운영 가능합니다.</p>
+
+    <div class="how-grid">
+      <div class="how-card reveal" style="position:relative;">
+        <div class="how-step">1</div>
+        <h3>인스톨러 실행</h3>
+        <p>119MB 단일 파일 설치 프로그램을 실행하면 AI 엔진·대시보드·모든 의존성이 한 번에 설치됩니다. Python, Node.js 별도 설치 불필요.</p>
+        <div class="how-arrow">→</div>
+      </div>
+      <div class="how-card reveal reveal-delay-1" style="position:relative;">
+        <div class="how-step">2</div>
+        <h3>카메라 연결</h3>
+        <p>기존 병원 CCTV의 RTSP 주소를 입력하거나 네트워크 자동 스캔 기능으로 카메라를 자동으로 찾아 연결합니다.</p>
+        <div class="how-arrow">→</div>
+      </div>
+      <div class="how-card reveal reveal-delay-2">
+        <div class="how-step">3</div>
+        <h3>실시간 모니터링</h3>
+        <p>브라우저에서 대시보드에 접속하면 즉시 AI 감지가 시작됩니다. Telegram으로 실시간 알림을 수신하고 PDF 보고서를 자동 생성합니다.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TECH STACK ── -->
+<div id="tech">
+  <div class="section">
+    <div class="section-tag">기술 스택</div>
+    <h2>검증된 기술로 구축</h2>
+    <p class="section-desc">오픈소스 AI 기술과 엔터프라이즈급 안정성을 병원 현장에 최적화했습니다.</p>
+
+    <div class="tech-grid reveal">
+      <div class="tech-chip"><div class="tech-dot" style="background:#3b82f6;"></div>Python 3.11</div>
+      <div class="tech-chip"><div class="tech-dot" style="background:#22d3ee;"></div>FastAPI</div>
+      <div class="tech-chip"><div class="tech-dot" style="background:#f87171;"></div>YOLOv8-Pose</div>
+      <div class="tech-chip"><div class="tech-dot" style="background:#fbbf24;"></div>ONNX Runtime</div>
+      <div class="tech-chip"><div class="tech-dot" style="background:#4ade80;"></div>OpenCV</div>
+      <div class="tech-chip"><div class="tech-dot" style="background:#818cf8;"></div>React 19</div>
+      <div class="tech-chip"><div class="tech-dot" style="background:#fb923c;"></div>WebSocket</div>
+      <div class="tech-chip"><div class="tech-dot" style="background:#c084fc;"></div>Telegram Bot</div>
+      <div class="tech-chip"><div class="tech-dot" style="background:#22d3ee;"></div>PyInstaller EXE</div>
+      <div class="tech-chip"><div class="tech-dot" style="background:#64748b;"></div>Inno Setup 인스톨러</div>
+    </div>
+
+    <div style="margin-top:40px;padding:24px 28px;border-radius:16px;background:rgba(34,211,238,0.04);border:1px solid rgba(34,211,238,0.1);display:flex;gap:24px;flex-wrap:wrap;" class="reveal">
+      <div style="flex:1;min-width:200px;">
+        <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:6px;">🔒 완전 On-Premise</div>
+        <div style="font-size:13px;color:var(--text2);">환자 영상 데이터가 병원 외부로 전송되지 않습니다. HIPAA/개인정보보호법 완전 준수.</div>
+      </div>
+      <div style="flex:1;min-width:200px;">
+        <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:6px;">⚡ Edge AI 처리</div>
+        <div style="font-size:13px;color:var(--text2);">인터넷 연결 없이 로컬에서 모든 AI 추론 처리. 네트워크 장애 시에도 계속 작동합니다.</div>
+      </div>
+      <div style="flex:1;min-width:200px;">
+        <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:6px;">📋 인증평가 지원</div>
+        <div style="font-size:13px;color:var(--text2);">야간 관찰 일지, 위험군 관찰 기록, 출입 통제 로그를 PDF로 자동 생성.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── DASHBOARD ACCESS ── -->
+<div id="access" class="access-section">
+  <div class="access-inner">
+    <div class="section-tag" style="margin:0 auto 16px;width:fit-content;">대시보드 접속</div>
+    <h2>지금 바로 대시보드에 접속하세요</h2>
+    <p>병원 PC에 설치된 Medicerti Vision 서버 주소를 입력하고 접속하세요.<br>같은 병원 네트워크에 연결된 모든 기기에서 접근 가능합니다.</p>
+    <div class="access-form">
+      <input
+        class="access-input"
+        id="serverAddr"
+        type="text"
+        placeholder="192.168.1.100:8111"
+        value="localhost:8111"
+      />
+      <button class="access-btn" onclick="openDashboard()">접속 →</button>
+    </div>
+    <div class="access-hint">
+      병원 내부 IP 또는 <code>localhost:8111</code> 입력 후 접속 · 기본 포트: <code>8111</code>
+    </div>
+  </div>
+</div>
+
+<!-- ── CTA ── -->
+<div class="cta">
+  <div class="section-tag" style="margin:0 auto 20px;width:fit-content;">시작하기</div>
+  <h2>지금 무료로 설치하세요</h2>
+  <p>119MB 단일 설치 파일로 5분 안에 병원 안전 AI를 가동할 수 있습니다.</p>
+  <div class="cta-buttons">
+    <a href="https://github.com/matahari999/medicerti-vision/releases" target="_blank" class="btn-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      인스톨러 다운로드
+    </a>
+    <a href="https://github.com/matahari999/medicerti-vision" target="_blank" class="btn-outline">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      GitHub에서 보기
+    </a>
+  </div>
+  <div class="download-badge">
+    <strong>medicerti-vision-setup-0.1.0.exe</strong> · 119MB · Windows 10/11 64bit
+  </div>
+</div>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="footer-logo">
+    <div style="width:24px;height:24px;background:linear-gradient(135deg,#0ea5e9,#22d3ee);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff;">✚</div>
+    Medicerti <span>Vision</span>
+  </div>
+  <div class="footer-links">
+    <a href="https://github.com/matahari999/medicerti-vision">GitHub</a>
+    <a href="https://github.com/matahari999/medicerti-vision/issues">문의</a>
+    <a href="#access">대시보드 접속</a>
+  </div>
+  <div class="footer-copy">© 2026 Medicerti Vision · Edge AI for Healthcare</div>
+</footer>
+
+<script>
+  // 대시보드 접속
+  function openDashboard() {
+    const addr = document.getElementById('serverAddr').value.trim() || 'localhost:8111';
+    const url = addr.startsWith('http') ? addr : `http://${addr}`;
+    window.open(`${url}/dashboard`, '_blank');
+  }
+
+  document.getElementById('serverAddr').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') openDashboard();
+  });
+
+  // 저장된 서버 주소 불러오기
+  const saved = localStorage.getItem('mv_server');
+  if (saved) document.getElementById('serverAddr').value = saved;
+  document.getElementById('serverAddr').addEventListener('change', function() {
+    localStorage.setItem('mv_server', this.value);
+  });
+
+  // 스크롤 애니메이션
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // 목업 바 차트 생성
+  const chart = document.getElementById('mockChart');
+  const colors = ['#f87171','#fb923c','#fbbf24','#c084fc','#22d3ee'];
+  const heights = [30,50,20,65,40,80,35,55,25,70,45,60,30,75,50,40,85,35,60,45,70,25,55,80,40,65,30,75,50,60];
+  heights.forEach((h, i) => {
+    const bar = document.createElement('div');
+    bar.className = 'mockup-bar-item';
+    bar.style.height = h + '%';
+    bar.style.background = colors[i % colors.length];
+    chart.appendChild(bar);
+  });
+</script>
+
+</body>
+</html>

@@ -11,7 +11,7 @@ import cv2
 import numpy as np
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.api.models import AlertMessage, CameraConfig, DetectionEvent, ReportRequest
@@ -28,6 +28,12 @@ pipeline_state = {"running": False, "cameras": {}}
 stranger_detector = StrangerDetector()
 telegram_notifier = TelegramNotifier()
 pipeline_thread: threading.Thread | None = None
+
+# 카메라별 최신 JPEG 프레임 (pipeline → API 공유)
+frame_buffer: dict[str, bytes] = {}
+
+def update_camera_frame(camera_id: str, jpeg_bytes: bytes) -> None:
+    frame_buffer[camera_id] = jpeg_bytes
 
 
 @asynccontextmanager
@@ -66,6 +72,11 @@ async def broadcast_alert(alert: AlertMessage):
         confidence=alert.confidence,
         timestamp=alert.timestamp,
     )
+
+
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/dashboard")
 
 
 @app.get("/health")
@@ -136,6 +147,54 @@ async def stop_pipeline():
 @app.get("/pipeline/status")
 async def pipeline_status():
     return pipeline_state
+
+
+@app.get("/cameras")
+async def list_cameras():
+    cams = pipeline_state.get("cameras", {})
+    return {
+        "total": len(cams),
+        "cameras": [
+            {
+                "id": k,
+                "label": v.get("label", k),
+                "rtsp_url": v.get("rtsp_url", ""),
+                "streaming": k in frame_buffer,
+            }
+            for k, v in cams.items()
+        ],
+    }
+
+
+@app.get("/cameras/{camera_id}/snapshot")
+async def camera_snapshot(camera_id: str):
+    frame = frame_buffer.get(camera_id)
+    if frame is None:
+        raise HTTPException(status_code=404, detail="Frame not available")
+    return Response(content=frame, media_type="image/jpeg",
+                    headers={"Cache-Control": "no-cache"})
+
+
+async def _mjpeg_generator(camera_id: str):
+    while True:
+        frame = frame_buffer.get(camera_id)
+        if frame:
+            yield (
+                b"--frame\r\n"
+                b"Content-Type: image/jpeg\r\n"
+                b"Content-Length: " + str(len(frame)).encode() + b"\r\n\r\n"
+                + frame + b"\r\n"
+            )
+        await asyncio.sleep(0.04)   # 최대 25fps
+
+
+@app.get("/cameras/{camera_id}/stream")
+async def camera_stream(camera_id: str):
+    return StreamingResponse(
+        _mjpeg_generator(camera_id),
+        media_type="multipart/x-mixed-replace; boundary=frame",
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 @app.get("/zoom")
