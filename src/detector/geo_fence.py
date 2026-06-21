@@ -35,7 +35,7 @@ class GeoFenceDetector:
         if hip_center is None:
             return result
 
-        hip_pt = tuple(hip_center.astype(int))
+        hip_pt = (int(hip_center[0]), int(hip_center[1]))
 
         for zone_id, vertices in self._polygons.items():
             pts = np.array(vertices, dtype=np.int32)

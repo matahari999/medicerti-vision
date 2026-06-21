@@ -19,7 +19,7 @@ class FallDetector:
     RIGHT_SHOULDER = 12
     NOSE = 0
 
-    def __init__(self, velocity_threshold: float = 300.0, angle_threshold: float = 45.0):
+    def __init__(self, velocity_threshold: float = 20.0, angle_threshold: float = 45.0):
         self.velocity_threshold = velocity_threshold
         self.angle_threshold = angle_threshold
         self._history: deque = deque(maxlen=FALL_CONFIRM_FRAMES)
@@ -105,14 +105,14 @@ class FallDetector:
         return angle
 
     def _check_ground_proximity(self, landmarks: list[dict]) -> bool:
-        if self.LEFT_ANKLE >= len(landmarks) or self.RIGHT_ANKLE >= len(landmarks):
+        required = [self.LEFT_SHOULDER, self.RIGHT_SHOULDER, self.LEFT_HIP, self.RIGHT_HIP]
+        if any(i >= len(landmarks) for i in required):
             return False
-        ankle_y = max(
-            landmarks[self.LEFT_ANKLE]["y"],
-            landmarks[self.RIGHT_ANKLE]["y"],
-        )
+
+        shoulder_y = (landmarks[self.LEFT_SHOULDER]["y"] + landmarks[self.RIGHT_SHOULDER]["y"]) / 2
         hip_center = self._get_hip_center(landmarks)
         if hip_center is None:
             return False
 
-        return hip_center[1] > ankle_y * 0.8
+        torso_height = max(hip_center[1] - shoulder_y, 1)
+        return torso_height < 60

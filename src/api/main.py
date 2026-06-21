@@ -47,11 +47,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-dashboard_dir = BASE_DIR / "src" / "dashboard"
-if dashboard_dir.exists():
-    app.mount("/", StaticFiles(directory=str(dashboard_dir), html=True), name="dashboard")
-
-
 async def broadcast_alert(alert: AlertMessage):
     dead: list[WebSocket] = []
     data = alert.model_dump_json()
@@ -216,3 +211,10 @@ async def get_version():
         "build_date": "2026-06-21",
         "api_version": "0.1.0",
     }
+
+
+dashboard_dir = BASE_DIR / "src" / "dashboard"
+if dashboard_dir.exists():
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/dashboard", StaticFiles(directory=str(dashboard_dir), html=True), name="dashboard")
+    logger.info(f"Dashboard mounted at /dashboard")
