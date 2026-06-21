@@ -19,7 +19,7 @@ from src.api.models import AlertMessage, CameraConfig
 from src.config.settings import SNAPSHOTS_DIR
 from src.detector.fall_detector import FallDetector
 from src.detector.geo_fence import GeoFenceDetector
-from src.detector.pose_estimator import PoseEstimator
+from src.detector.yolo_pose import YoloPoseEstimator
 from src.detector.stranger_detector import StrangerDetector
 from src.detector.roi_tracker import ROITracker
 from src.ingest.rtsp_reader import RTSPStreamReader
@@ -37,7 +37,7 @@ class Pipeline:
         self.cameras = cameras
         self.mock_mode = mock_mode
         self.readers: dict[str, RTSPStreamReader] = {}
-        self.estimator = PoseEstimator(model_complexity=1)
+        self.estimator = YoloPoseEstimator()
         self.fall_detector = FallDetector()
         self.geo_fence = GeoFenceDetector()
         self.stranger_detector = StrangerDetector()

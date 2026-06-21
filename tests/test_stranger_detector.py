@@ -110,6 +110,27 @@ class TestRestrictedHours:
         tmp.cleanup()
 
 
+class TestYoloPose:
+    def test_model_exists(self):
+        from src.detector.yolo_pose import MODEL_PATH
+        assert MODEL_PATH.exists(), f"Model not found: {MODEL_PATH}"
+
+    def test_estimator_initializes(self):
+        import numpy as np
+        from src.detector.yolo_pose import YoloPoseEstimator
+        est = YoloPoseEstimator()
+        est._lazy_init()
+        assert est._session is not None
+
+    def test_inference_on_noise_returns_none(self):
+        import numpy as np
+        from src.detector.yolo_pose import YoloPoseEstimator
+        est = YoloPoseEstimator()
+        frame = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+        lm, _ = est.process(frame)
+        assert lm is None
+
+
 class TestDetection:
     def test_no_mediapipe_returns_no_stranger(self, detector):
         detector._face_detector = None

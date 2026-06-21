@@ -14,3 +14,5 @@ build/
 *.spec
 node_modules/
 *.db
+
+models/
