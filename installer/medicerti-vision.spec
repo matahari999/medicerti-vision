@@ -1,5 +1,4 @@
 # -*- mode: python ; coding: utf-8 -*-
-
 import sys
 from pathlib import Path
 
@@ -8,29 +7,43 @@ block_cipher = None
 project_root = Path(".").resolve()
 src_dir = project_root / "src"
 dashboard_dir = src_dir / "dashboard"
+models_dir = project_root / "models"
 version_file = project_root / "version.json"
+
+model_onnx = models_dir / "yolov8n-pose.onnx"
+datas = [
+    (str(version_file), "."),
+]
+
+if model_onnx.exists():
+    datas.append((str(model_onnx), "models"))
+
+dash_files = list(dashboard_dir.rglob("*"))
+for f in dash_files:
+    if f.is_file():
+        rel = f.relative_to(project_root)
+        datas.append((str(f), str(rel.parent)))
 
 a = Analysis(
     [str(project_root / 'run.py')],
     pathex=[str(project_root)],
     binaries=[],
-    datas=[
-        (str(dashboard_dir / "index.html"), "src/dashboard"),
-        (str(version_file), "."),
-    ],
+    datas=datas,
     hiddenimports=[
         'src.api.main',
         'src.api.models',
         'src.api.event_logger',
         'src.ingest.rtsp_reader',
-        'src.detector.pose_estimator',
+        'src.detector.yolo_pose',
         'src.detector.fall_detector',
         'src.detector.geo_fence',
         'src.detector.stranger_detector',
+        'src.detector.roi_tracker',
         'src.privacy.masker',
         'src.accreditation.report_gen',
         'src.discovery.camera_scanner',
         'src.updater.auto_updater',
+        'src.notify.telegram_notifier',
         'src.config.settings',
         'uvicorn',
         'uvicorn.logging',
@@ -41,7 +54,7 @@ a = Analysis(
         'uvicorn.protocols.http.auto',
         'uvicorn.protocols.websockets',
         'uvicorn.protocols.websockets.auto',
-        'mediapipe',
+        'onnxruntime',
         'cv2',
         'numpy',
         'fastapi',
@@ -62,6 +75,10 @@ a = Analysis(
         'sympy',
         'PIL.ImageShow',
         'PIL.ImageQt',
+        'notebook',
+        'jupyter',
+        'ultralytics',
+        'torch',
     ],
     noarchive=False,
     optimize=1,

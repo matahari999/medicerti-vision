@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 import urllib.request
 from pathlib import Path
 
@@ -8,8 +9,13 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-MODEL_DIR = Path(__file__).resolve().parent.parent.parent / "models"
 MODEL_URL = "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n-pose.onnx"
+
+if getattr(sys, 'frozen', False):
+    _BASE = Path(sys._MEIPASS)
+else:
+    _BASE = Path(__file__).resolve().parent.parent.parent
+MODEL_DIR = _BASE / "models"
 MODEL_PATH = MODEL_DIR / "yolov8n-pose.onnx"
 
 INPUT_SIZE = 640

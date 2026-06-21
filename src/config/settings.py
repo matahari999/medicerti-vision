@@ -1,7 +1,15 @@
+import os
+import sys
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-DATA_DIR = BASE_DIR / "data"
+if getattr(sys, 'frozen', False):
+    BASE_DIR = Path(sys._MEIPASS)
+    _DATA_ROOT = Path(os.environ.get("APPDATA", "C:\\ProgramData")) / "medicerti-vision"
+else:
+    BASE_DIR = Path(__file__).resolve().parent.parent.parent
+    _DATA_ROOT = BASE_DIR
+
+DATA_DIR = _DATA_ROOT / "data"
 EVENTS_DIR = DATA_DIR / "events"
 SNAPSHOTS_DIR = DATA_DIR / "snapshots"
 
