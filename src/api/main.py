@@ -129,6 +129,28 @@ async def pipeline_status():
     return pipeline_state
 
 
+@app.get("/zoom")
+async def get_zoom_info():
+    from src.main import Pipeline
+    return {"zoom": {"active": False, "message": "Zoom available when pipeline is running"}}
+
+
+@app.post("/zoom/activate")
+async def activate_zoom(x: int = 320, y: int = 240, factor: float = 2.0, auto_track: bool = False):
+    from src.main import Pipeline
+    return {"status": "zoom_activate", "center": [x, y], "factor": factor}
+
+
+@app.post("/zoom/deactivate")
+async def deactivate_zoom():
+    return {"status": "zoom_deactivated"}
+
+
+@app.post("/zoom/factor")
+async def set_zoom_factor(factor: float = 2.0):
+    return {"status": "zoom_factor_set", "factor": max(1.0, min(8.0, factor))}
+
+
 @app.post("/events/report-pdf")
 async def generate_report_pdf(req: ReportRequest):
     from src.accreditation.report_gen import AccreditationReport

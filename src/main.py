@@ -21,6 +21,7 @@ from src.detector.fall_detector import FallDetector
 from src.detector.geo_fence import GeoFenceDetector
 from src.detector.pose_estimator import PoseEstimator
 from src.detector.stranger_detector import StrangerDetector
+from src.detector.roi_tracker import ROITracker
 from src.ingest.rtsp_reader import RTSPStreamReader
 from src.privacy.masker import PrivacyMasker
 
@@ -40,6 +41,7 @@ class Pipeline:
         self.fall_detector = FallDetector()
         self.geo_fence = GeoFenceDetector()
         self.stranger_detector = StrangerDetector()
+        self.roi_tracker = ROITracker()
         self.masker = PrivacyMasker()
         self.logger = EventLogger()
         self._running = False
@@ -72,11 +74,11 @@ class Pipeline:
 
     def process_frame(self, camera_id: str, frame):
         if frame is None:
-            return None
+            return None, None
 
         landmarks, _ = self.estimator.process(frame)
         if landmarks is None:
-            return None
+            return None, None
 
         fall_result = self.fall_detector.detect(landmarks)
         geo_result = self.geo_fence.detect_elopement(landmarks)
@@ -90,11 +92,15 @@ class Pipeline:
         if geo_result.get("zone"):
             masked = self.geo_fence.draw_zones(masked)
 
+        self.roi_tracker.update_frame_shape(frame.shape[0], frame.shape[1])
+        zoomed_frame = self.roi_tracker.compute_zoom(frame)
+
         events = []
 
         if fall_result["fall"]:
             event_type = "fall"
             snapshot = self._save_snapshot(camera_id, frame, event_type)
+            self.roi_tracker.track_bbox(self._estimate_bbox(landmarks), auto_track=True)
             self.logger.insert(
                 camera_id=camera_id,
                 event_type=event_type,
@@ -113,6 +119,7 @@ class Pipeline:
         if geo_result.get("elopement"):
             event_type = "elopement" if not geo_result.get("loitering") else "loitering"
             snapshot = self._save_snapshot(camera_id, frame, event_type)
+            self.roi_tracker.track_bbox(self._estimate_bbox(landmarks), auto_track=True)
             self.logger.insert(
                 camera_id=camera_id,
                 event_type=event_type,
@@ -131,6 +138,11 @@ class Pipeline:
         if stranger_result["stranger"]:
             event_type = "stranger"
             snapshot = self._save_snapshot(camera_id, frame, event_type)
+            for face in stranger_result.get("faces", []):
+                bbox = face.get("bbox")
+                if bbox and face["matched_name"] is None:
+                    self.roi_tracker.track_bbox(tuple(bbox), auto_track=True)
+                    break
             self.logger.insert(
                 camera_id=camera_id,
                 event_type=event_type,
@@ -146,7 +158,16 @@ class Pipeline:
                 timestamp=datetime.now().isoformat(),
             ))
 
-        return masked, events
+        return masked, zoomed_frame, events
+
+    def _estimate_bbox(self, landmarks: list[dict]) -> tuple[int, int, int, int]:
+        xs = [lm["x"] for lm in landmarks[:25] if lm["visibility"] > 0.5]
+        ys = [lm["y"] for lm in landmarks[:25] if lm["visibility"] > 0.5]
+        if not xs or not ys:
+            return (0, 0, 100, 100)
+        x, y = int(min(xs)), int(min(ys))
+        x2, y2 = int(max(xs)), int(max(ys))
+        return (x, y, x2 - x, y2 - y)
 
     def _save_snapshot(self, camera_id: str, frame, event_type: str) -> str | None:
         try:
@@ -169,16 +190,16 @@ async def run_pipeline_async(pipeline: Pipeline):
             if frame is None:
                 continue
 
-            result = await loop.run_in_executor(None, pipeline.process_frame, cam_id, frame)
-            if result is None:
+            masked, zoomed, events = await loop.run_in_executor(None, pipeline.process_frame, cam_id, frame)
+            if masked is None:
                 continue
-            masked, events = result
 
             for alert in events:
                 await broadcast_alert(alert)
 
             if masked is not None:
-                cv2.imshow(f"medicerti-vision: {cam_id}", masked)
+                display = zoomed if zoomed is not None else masked
+                cv2.imshow(f"medicerti-vision: {cam_id}", display)
 
         key = cv2.waitKey(1) & 0xFF
         if key == ord("q"):
