@@ -10,4 +10,7 @@ __pycache__/
 .env.local
 .face_key
 dist/
+build/
+*.spec
 node_modules/
+*.db

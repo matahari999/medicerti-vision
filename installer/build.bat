@@ -2,36 +2,39 @@
 chcp 65001 >nul
 title medicerti-vision Installer Build
 
+set PYTHON=C:\Users\sinab\AppData\Local\Programs\Python\Python311\python.exe
+set ROOT=%~dp0..
+
 echo ============================================
 echo  medicerti-vision - Installer Build
 echo ============================================
 echo.
 
 :: Check Python
-python --version >nul 2>&1
+%PYTHON% --version >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Python not found. Install Python 3.11+ first.
+    echo [ERROR] Python not found at %PYTHON%
     pause
     exit /b 1
 )
 
 :: Check PyInstaller
-python -m pip show pyinstaller >nul 2>&1
+%PYTHON% -m pip show pyinstaller >nul 2>&1
 if errorlevel 1 (
     echo [INFO] Installing PyInstaller...
-    python -m pip install pyinstaller --quiet
+    %PYTHON% -m pip install pyinstaller --quiet
 )
 
 :: Install dependencies
 echo [1/4] Installing dependencies...
-python -m pip install -r requirements.txt --quiet
+%PYTHON% -m pip install -r "%ROOT%\requirements.txt" --quiet
 
 :: Build executable
 echo [2/4] Building executable with PyInstaller...
-python -m PyInstaller installer\medicerti-vision.spec --clean --noconfirm
+%PYTHON% -m PyInstaller "%ROOT%\installer\medicerti-vision.spec" --clean --noconfirm --distpath "%ROOT%\dist"
 
 :: Verify build
-if not exist "dist\medicerti-vision.exe" (
+if not exist "%ROOT%\dist\medicerti-vision.exe" (
     echo [ERROR] Build failed. Check output above.
     pause
     exit /b 1
@@ -39,9 +42,9 @@ if not exist "dist\medicerti-vision.exe" (
 
 :: Copy assets
 echo [3/4] Copying assets...
-if not exist "dist\src\dashboard" mkdir "dist\src\dashboard"
-copy /Y "src\dashboard\index.html" "dist\src\dashboard\" >nul
-copy /Y "version.json" "dist\" >nul
+if not exist "%ROOT%\dist\src\dashboard" mkdir "%ROOT%\dist\src\dashboard"
+copy /Y "%ROOT%\src\dashboard\index.html" "%ROOT%\dist\src\dashboard\" >nul
+copy /Y "%ROOT%\version.json" "%ROOT%\dist\" >nul
 
 :: Create run script
 echo [4/4] Creating launcher...
@@ -52,7 +55,7 @@ echo echo Starting medicerti-vision...
 echo start http://localhost:8111
 echo "%%~dp0medicerti-vision.exe" --auto-scan --port 8111
 echo pause
-) > "dist\run_medicerti.bat"
+) > "%ROOT%\dist\run_medicerti.bat"
 
 echo.
 echo ============================================

@@ -5,13 +5,14 @@ from pathlib import Path
 
 block_cipher = None
 
-src_dir = Path(__file__).parent / "src"
+project_root = Path(".").resolve()
+src_dir = project_root / "src"
 dashboard_dir = src_dir / "dashboard"
-version_file = Path(__file__).parent / "version.json"
+version_file = project_root / "version.json"
 
 a = Analysis(
-    ['run.py'],
-    pathex=[str(Path(__file__).parent)],
+    [str(project_root / 'run.py')],
+    pathex=[str(project_root)],
     binaries=[],
     datas=[
         (str(dashboard_dir / "index.html"), "src/dashboard"),
@@ -25,6 +26,7 @@ a = Analysis(
         'src.detector.pose_estimator',
         'src.detector.fall_detector',
         'src.detector.geo_fence',
+        'src.detector.stranger_detector',
         'src.privacy.masker',
         'src.accreditation.report_gen',
         'src.discovery.camera_scanner',

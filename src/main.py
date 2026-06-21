@@ -20,6 +20,7 @@ from src.config.settings import SNAPSHOTS_DIR
 from src.detector.fall_detector import FallDetector
 from src.detector.geo_fence import GeoFenceDetector
 from src.detector.pose_estimator import PoseEstimator
+from src.detector.stranger_detector import StrangerDetector
 from src.ingest.rtsp_reader import RTSPStreamReader
 from src.privacy.masker import PrivacyMasker
 
@@ -38,6 +39,7 @@ class Pipeline:
         self.estimator = PoseEstimator(model_complexity=1)
         self.fall_detector = FallDetector()
         self.geo_fence = GeoFenceDetector()
+        self.stranger_detector = StrangerDetector()
         self.masker = PrivacyMasker()
         self.logger = EventLogger()
         self._running = False
@@ -78,6 +80,10 @@ class Pipeline:
 
         fall_result = self.fall_detector.detect(landmarks)
         geo_result = self.geo_fence.detect_elopement(landmarks)
+        stranger_result = self.stranger_detector.detect(
+            frame, camera_id=camera_id,
+            zone_restricted=bool(geo_result.get("zone")),
+        )
 
         masked = self.masker.apply(frame, landmarks)
         
@@ -119,6 +125,24 @@ class Pipeline:
                 camera_id=camera_id,
                 event_type=event_type,
                 confidence=1.0,
+                timestamp=datetime.now().isoformat(),
+            ))
+
+        if stranger_result["stranger"]:
+            event_type = "stranger"
+            snapshot = self._save_snapshot(camera_id, frame, event_type)
+            self.logger.insert(
+                camera_id=camera_id,
+                event_type=event_type,
+                confidence=stranger_result["confidence"],
+                snapshot_path=snapshot,
+                details={"reasons": stranger_result["reasons"], "faces": len(stranger_result.get("faces", []))},
+            )
+            events.append(AlertMessage(
+                type="alert",
+                camera_id=camera_id,
+                event_type=event_type,
+                confidence=stranger_result["confidence"],
                 timestamp=datetime.now().isoformat(),
             ))
 

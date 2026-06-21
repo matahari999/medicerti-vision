@@ -15,6 +15,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.api.models import AlertMessage, CameraConfig, DetectionEvent, ReportRequest
+from src.detector.stranger_detector import StrangerDetector
 from src.api.event_logger import EventLogger
 from src.config.settings import SNAPSHOTS_DIR, BASE_DIR
 
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 event_logger = EventLogger()
 active_connections: list[WebSocket] = []
 pipeline_state = {"running": False, "cameras": {}}
+stranger_detector = StrangerDetector()
 pipeline_thread: threading.Thread | None = None
 
 
@@ -158,6 +160,32 @@ async def scan_cameras(subnet: str | None = Query(None)):
         return {"found": len(found), "cameras": found}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/faces/register")
+async def register_face(name: str = Query(...), role: str = ""):
+    return {"success": True, "message": f"Face registration requires image upload via /faces/register-with-image"}
+
+
+@app.get("/faces/whitelist")
+async def get_whitelist():
+    return stranger_detector.get_whitelist()
+
+
+@app.delete("/faces/whitelist")
+async def remove_face(name: str = Query(...)):
+    return {"success": stranger_detector.remove_face(name)}
+
+
+@app.get("/faces/stranger-events")
+async def get_stranger_events(limit: int = 100):
+    return stranger_detector.get_stranger_events(limit=limit)
+
+
+@app.post("/faces/train")
+async def train_recognizer():
+    success = stranger_detector.train_recognizer()
+    return {"success": success, "message": "Recognizer trained" if success else "No faces to train on"}
 
 
 @app.get("/update/check")
