@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>medicerti-vision Dashboard</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background: #0f172a; color: #e2e8f0; }
+.header { background: linear-gradient(135deg, #1e293b, #334155); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #475569; }
+.header h1 { font-size: 18px; font-weight: 600; color: #38bdf8; }
+.header .status { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.online { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+.dot.offline { background: #ef4444; }
+.container { display: grid; grid-template-columns: 300px 1fr; height: calc(100vh - 52px); }
+.sidebar { background: #1e293b; padding: 16px; overflow-y: auto; border-right: 1px solid #334155; }
+.sidebar h2 { font-size: 13px; text-transform: uppercase; color: #64748b; margin-bottom: 12px; letter-spacing: 1px; }
+.main { padding: 16px; overflow-y: auto; }
+.event-card { background: #1e293b; border-radius: 8px; padding: 12px; margin-bottom: 8px; border-left: 3px solid; cursor: pointer; transition: background 0.2s; }
+.event-card:hover { background: #334155; }
+.event-card.fall { border-color: #ef4444; }
+.event-card.elopement { border-color: #f59e0b; }
+.event-card.loitering { border-color: #f97316; }
+.event-card.stranger { border-color: #8b5cf6; }
+.event-card .time { font-size: 11px; color: #94a3b8; }
+.event-card .type { font-size: 14px; font-weight: 600; margin: 4px 0; }
+.event-card .type .badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
+.badge.fall { background: #ef4444; color: white; }
+.badge.elopement { background: #f59e0b; color: black; }
+.badge.loitering { background: #f97316; color: white; }
+.badge.stranger { background: #8b5cf6; color: white; }
+.event-card .confidence { font-size: 12px; color: #94a3b8; }
+.empty-state { text-align: center; padding: 40px; color: #64748b; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.stat-card { background: #1e293b; border-radius: 8px; padding: 16px; text-align: center; }
+.stat-card .number { font-size: 32px; font-weight: 700; }
+.stat-card .label { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+.stat-card.fall .number { color: #ef4444; }
+.stat-card.elopement .number { color: #f59e0b; }
+.stat-card.loitering .number { color: #f97316; }
+.stat-card.stranger .number { color: #8b5cf6; }
+.alert-banner { display: none; background: #ef4444; color: white; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; animation: pulse 1s; }
+.alert-banner.show { display: block; }
+@keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+.toast { position: fixed; top: 60px; right: 16px; background: #1e293b; border-left: 4px solid #ef4444; padding: 12px 16px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); z-index: 100; animation: slideIn 0.3s; }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>medicerti-vision · 실시간 환자 안전 모니터링</h1>
+  <div class="status">
+    <span class="dot offline" id="statusDot"></span>
+    <span id="statusText">연결 대기 중</span>
+  </div>
+</div>
+<div class="container">
+  <div class="sidebar" id="eventList">
+    <h2>최근 이벤트</h2>
+    <div class="empty-state" id="emptyState">이벤트가 아직 없습니다</div>
+  </div>
+  <div class="main">
+    <div class="alert-banner" id="alertBanner">⚠️ 새 낙상 이벤트 발생!</div>
+    <div class="stats-grid">
+      <div class="stat-card fall"><div class="number" id="statFall">0</div><div class="label">낙상</div></div>
+      <div class="stat-card elopement"><div class="number" id="statElopement">0</div><div class="label">이탈</div></div>
+      <div class="stat-card loitering"><div class="number" id="statLoitering">0</div><div class="label">배회</div></div>
+      <div class="stat-card stranger"><div class="number" id="statStranger">0</div><div class="label">외부인</div></div>
+    </div>
+    <div style="background:#1e293b; border-radius:8px; padding:24px; color:#64748b; text-align:center; min-height:200px; display:flex; align-items:center; justify-content:center;">
+      <div>
+        <div style="font-size:48px; margin-bottom:12px;">🖥️</div>
+        <div style="font-size:14px;">라이브 영상 및 카메라 관리 영역</div>
+        <div style="font-size:12px; margin-top:8px;">RTSP 카메라 연결 시 실시간 스트림이 여기에 표시됩니다</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const wsUrl = `ws://${window.location.host}/ws/alerts`;
+let ws = null;
+const eventTypes = { fall: 0, elopement: 0, loitering: 0, stranger: 0 };
+const eventList = document.getElementById('eventList');
+const emptyState = document.getElementById('emptyState');
+
+function connect() {
+  ws = new WebSocket(wsUrl);
+  ws.onopen = () => {
+    document.getElementById('statusDot').className = 'dot online';
+    document.getElementById('statusText').textContent = '연결됨';
+  };
+  ws.onclose = () => {
+    document.getElementById('statusDot').className = 'dot offline';
+    document.getElementById('statusText').textContent = '연결 끊김 (재연결 중...)';
+    setTimeout(connect, 2000);
+  };
+  ws.onmessage = (e) => {
+    try {
+      const alert = JSON.parse(e.data);
+      if (alert.type === 'alert') {
+        handleAlert(alert);
+      }
+    } catch(err) {
+      console.error('Parse error:', err);
+    }
+  };
+}
+
+function handleAlert(alert) {
+  const { event_type, camera_id, confidence, timestamp } = alert;
+  eventTypes[event_type] = (eventTypes[event_type] || 0) + 1;
+  updateStats();
+  addEventCard(alert);
+  showToast(alert);
+
+  if (event_type === 'fall') {
+    const banner = document.getElementById('alertBanner');
+    banner.classList.add('show');
+    setTimeout(() => banner.classList.remove('show'), 5000);
+  }
+}
+
+function updateStats() {
+  document.getElementById('statFall').textContent = eventTypes.fall;
+  document.getElementById('statElopement').textContent = eventTypes.elopement;
+  document.getElementById('statLoitering').textContent = eventTypes.loitering;
+  document.getElementById('statStranger').textContent = eventTypes.stranger;
+}
+
+function addEventCard(alert) {
+  const card = document.createElement('div');
+  card.className = `event-card ${alert.event_type}`;
+  const time = alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString('ko-KR') : '방금';
+  const typeLabel = { fall: '낙상', elopement: '이탈', loitering: '배회', stranger: '미등록 외부인' };
+  card.innerHTML = `
+    <div class="time">${time} · ${alert.camera_id}</div>
+    <div class="type">${typeLabel[alert.event_type] || alert.event_type}
+      <span class="badge ${alert.event_type}">${(alert.confidence * 100).toFixed(0)}%</span>
+    </div>
+  `;
+  const container = eventList.querySelector('#eventList > div:last-child');
+  eventList.insertBefore(card, eventList.querySelector('.empty-state')?.nextSibling || eventList.firstChild);
+  emptyState.style.display = 'none';
+  if (eventList.children.length > 100) {
+    eventList.removeChild(eventList.lastChild);
+  }
+}
+
+function showToast(alert) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  const typeLabel = { fall: '⚠️ 낙상 감지', elopement: '🚶 이탈 감지', loitering: '👀 배회 감지', stranger: '🔴 미등록 외부인' };
+  toast.textContent = `${typeLabel[alert.event_type] || alert.event_type} - ${alert.camera_id}`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+connect();
+</script>
+</body>
+</html>

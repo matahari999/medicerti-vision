@@ -1,0 +1,13 @@
+# medicerti-vision
+
+temp/
+log/
+data/events/
+data/snapshots/
+data/reports/
+__pycache__/
+*.pyc
+.env.local
+.face_key
+dist/
+node_modules/

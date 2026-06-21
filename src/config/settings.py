@@ -1,0 +1,19 @@
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+DATA_DIR = BASE_DIR / "data"
+EVENTS_DIR = DATA_DIR / "events"
+SNAPSHOTS_DIR = DATA_DIR / "snapshots"
+
+RTSP_RECONNECT_DELAYS = [1, 2, 4, 8, 15]
+RTSP_MAX_RECONNECTS = 5
+FRAME_QUEUE_MAXSIZE = 3
+FALL_CONFIRM_FRAMES = 3
+FALL_CONFIRMATION_THRESHOLD = 0.7
+LOITERING_SECONDS = 30
+
+SQLITE_PATH = str(EVENTS_DIR / "events.db")
+REPORT_OUTPUT_DIR = DATA_DIR / "reports"
+
+FACE_ENCRYPTION_KEY_PATH = BASE_DIR / ".face_key"
+WHITELIST_DB_PATH = str(DATA_DIR / "whitelist.db")
