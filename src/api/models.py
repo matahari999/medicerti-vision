@@ -34,3 +34,12 @@ class ReportRequest(BaseModel):
     end_date: str | None = None
     camera_ids: list[str] = []
     event_types: list[str] = ["fall", "elopement", "loitering", "stranger"]
+
+
+class NightReportRequest(ReportRequest):
+    night_start: int = 22
+    night_end: int = 6
+
+
+class HighRiskReportRequest(ReportRequest):
+    target_types: list[str] = ["fall"]

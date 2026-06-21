@@ -178,6 +178,57 @@ async def generate_report_pdf(req: ReportRequest):
     return JSONResponse(content={"pdf_path": pdf_path})
 
 
+@app.post("/events/report-night")
+async def generate_night_report(req: ReportRequest):
+    from src.accreditation.report_gen import NightSecurityReport
+    from datetime import datetime, timedelta
+
+    start = req.start_date or (datetime.now() - timedelta(days=1)).isoformat()
+    end = req.end_date or datetime.now().isoformat()
+    events = event_logger.query_for_report(
+        start=start, end=end,
+        camera_ids=req.camera_ids or None,
+        event_types=req.event_types or None,
+    )
+    gen = NightSecurityReport()
+    pdf_path = gen.generate(events, facility_name="medicerti-vision")
+    return JSONResponse(content={"pdf_path": pdf_path})
+
+
+@app.post("/events/report-highrisk")
+async def generate_highrisk_report(req: ReportRequest):
+    from src.accreditation.report_gen import HighRiskObservationReport
+    from datetime import datetime, timedelta
+
+    start = req.start_date or (datetime.now() - timedelta(days=7)).isoformat()
+    end = req.end_date or datetime.now().isoformat()
+    events = event_logger.query_for_report(
+        start=start, end=end,
+        camera_ids=req.camera_ids or None,
+        event_types=["fall"],
+    )
+    gen = HighRiskObservationReport()
+    pdf_path = gen.generate(events, facility_name="medicerti-vision")
+    return JSONResponse(content={"pdf_path": pdf_path})
+
+
+@app.post("/events/report-access")
+async def generate_access_report(req: ReportRequest):
+    from src.accreditation.report_gen import AccessControlReport
+    from datetime import datetime, timedelta
+
+    start = req.start_date or (datetime.now() - timedelta(days=7)).isoformat()
+    end = req.end_date or datetime.now().isoformat()
+    events = event_logger.query_for_report(
+        start=start, end=end,
+        camera_ids=req.camera_ids or None,
+        event_types=["stranger", "elopement"],
+    )
+    gen = AccessControlReport()
+    pdf_path = gen.generate(events, facility_name="medicerti-vision")
+    return JSONResponse(content={"pdf_path": pdf_path})
+
+
 @app.post("/scan/cameras")
 async def scan_cameras(subnet: str | None = Query(None)):
     from src.discovery.camera_scanner import scan_network_for_cameras
